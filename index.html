@@ -217,6 +217,38 @@
       box-shadow: 2px 2px 0 var(--border-color);
     }
 
+    /* 全量一覧フィルター UI */
+    .filter-wrapper {
+      background: #2a2a32;
+      border: 3px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .filter-title {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: var(--splat-yellow);
+      margin-bottom: 6px;
+    }
+
+    .filter-inputs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-inputs input[type="date"] {
+      padding: 4px 6px;
+      font-size: 0.8rem;
+    }
+
+    .filter-inputs span {
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
     /* カレンダー UI */
     .calendar-wrapper {
       background: #2a2a32;
@@ -231,8 +263,19 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
-      font-weight: bold;
-      color: var(--splat-yellow);
+      gap: 4px;
+    }
+
+    .calendar-select-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .calendar-select-group select {
+      padding: 4px 6px;
+      font-size: 0.85rem;
+      width: auto;
     }
 
     .calendar-grid {
@@ -464,13 +507,27 @@
           <button type="button" class="tab-btn" id="tabCalBtn">カレンダー</button>
         </div>
 
+        <!-- 全量一覧 表示範囲フィルター -->
+        <div class="filter-wrapper" id="listViewFilter">
+          <div class="filter-title">🔍 表示期間の絞り込み（昇順表示）</div>
+          <div class="filter-inputs">
+            <input type="date" id="filterStartDate">
+            <span>〜</span>
+            <input type="date" id="filterEndDate">
+            <button type="button" class="btn btn-edit" id="clearFilterBtn">解除</button>
+          </div>
+        </div>
+
         <!-- カレンダービューエリア -->
         <div id="calendarView" style="display: none;">
           <div class="calendar-wrapper">
             <div class="calendar-header">
-              <button type="button" class="btn btn-edit" id="prevMonthBtn">◀ 前月</button>
-              <span id="calendarMonthTitle">2026年 4月</span>
-              <button type="button" class="btn btn-edit" id="nextMonthBtn">次月 ▶</button>
+              <button type="button" class="btn btn-edit" id="prevMonthBtn">◀</button>
+              <div class="calendar-select-group">
+                <select id="calYearSelect"></select>
+                <select id="calMonthSelect"></select>
+              </div>
+              <button type="button" class="btn btn-edit" id="nextMonthBtn">▶</button>
             </div>
             <div class="calendar-grid" id="calendarGrid">
               <!-- カレンダーグリッドがここに動的に生成されます -->
@@ -539,11 +596,17 @@
   const outputArea = document.getElementById('outputArea');
   const copyBtn = document.getElementById('copyBtn');
 
-  // Tab & Calendar elements
+  // Tab & Filter & Calendar elements
   const tabListBtn = document.getElementById('tabListBtn');
   const tabCalBtn = document.getElementById('tabCalBtn');
+  const listViewFilter = document.getElementById('listViewFilter');
+  const filterStartDate = document.getElementById('filterStartDate');
+  const filterEndDate = document.getElementById('filterEndDate');
+  const clearFilterBtn = document.getElementById('clearFilterBtn');
+
   const calendarView = document.getElementById('calendarView');
-  const calendarMonthTitle = document.getElementById('calendarMonthTitle');
+  const calYearSelect = document.getElementById('calYearSelect');
+  const calMonthSelect = document.getElementById('calMonthSelect');
   const calendarGrid = document.getElementById('calendarGrid');
   const prevMonthBtn = document.getElementById('prevMonthBtn');
   const nextMonthBtn = document.getElementById('nextMonthBtn');
@@ -564,7 +627,48 @@
       localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.value.trim());
     });
 
+    initCalendarSelects();
     renderUI();
+  });
+
+  // 年月セレクトボックスの初期化
+  function initCalendarSelects() {
+    // 2020年〜2030年
+    calYearSelect.innerHTML = '';
+    for (let y = 2020; y <= 2030; y++) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = `${y}年`;
+      calYearSelect.appendChild(opt);
+    }
+
+    // 1月〜12月
+    calMonthSelect.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = m - 1; // 0-index
+      opt.textContent = `${m}月`;
+      calMonthSelect.appendChild(opt);
+    }
+
+    calYearSelect.addEventListener('change', () => {
+      calendarDate.setFullYear(parseInt(calYearSelect.value));
+      renderCalendar();
+    });
+
+    calMonthSelect.addEventListener('change', () => {
+      calendarDate.setMonth(parseInt(calMonthSelect.value));
+      renderCalendar();
+    });
+  }
+
+  // Filter Handlers
+  filterStartDate.addEventListener('change', renderLogs);
+  filterEndDate.addEventListener('change', renderLogs);
+  clearFilterBtn.addEventListener('click', () => {
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    renderLogs();
   });
 
   // Tab Handlers
@@ -574,6 +678,7 @@
     tabListBtn.classList.add('active');
     tabCalBtn.classList.remove('active');
     calendarView.style.display = 'none';
+    listViewFilter.style.display = 'block';
     selectedDateTitle.style.display = 'none';
     renderLogs();
   });
@@ -583,11 +688,12 @@
     tabCalBtn.classList.add('active');
     tabListBtn.classList.remove('active');
     calendarView.style.display = 'block';
+    listViewFilter.style.display = 'none';
     renderCalendar();
     renderLogs();
   });
 
-  // Calendar Month Nav
+  // Calendar Month Nav Buttons
   prevMonthBtn.addEventListener('click', () => {
     calendarDate.setMonth(calendarDate.getMonth() - 1);
     renderCalendar();
@@ -603,7 +709,10 @@
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
 
-    calendarMonthTitle.textContent = `${year}年 ${month + 1}月`;
+    // セレクトボックスの同期
+    calYearSelect.value = year;
+    calMonthSelect.value = month;
+
     calendarGrid.innerHTML = '';
 
     const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -670,7 +779,7 @@
 
     if (!date || !text) return;
 
-    memoLogs.unshift({ id: Date.now(), date, text });
+    memoLogs.push({ id: Date.now(), date, text });
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
 
     memoTextInput.value = '';
@@ -718,11 +827,11 @@
 
   // メモリスト描画
   function renderLogs() {
-    let filteredLogs = memoLogs;
+    let filteredLogs = [...memoLogs];
 
     if (currentViewMode === 'calendar') {
       if (selectedCalDateStr) {
-        filteredLogs = memoLogs.filter(log => log.date === selectedCalDateStr);
+        filteredLogs = filteredLogs.filter(log => log.date === selectedCalDateStr);
         selectedDateTitle.style.display = 'block';
         selectedDateTitle.textContent = `▶ ${selectedCalDateStr} のメモ (${filteredLogs.length}件)`;
       } else {
@@ -731,11 +840,25 @@
         filteredLogs = [];
       }
     } else {
+      // 全量一覧表示：日付の昇順ソート（古い順）
+      filteredLogs.sort((a, b) => a.date.localeCompare(b.date));
+
+      // 表示範囲フィルター（開始日・終了日）
+      const start = filterStartDate.value;
+      const end = filterEndDate.value;
+
+      if (start) {
+        filteredLogs = filteredLogs.filter(log => log.date >= start);
+      }
+      if (end) {
+        filteredLogs = filteredLogs.filter(log => log.date <= end);
+      }
+
       selectedDateTitle.style.display = 'none';
     }
 
     if (filteredLogs.length === 0) {
-      logList.innerHTML = `<p style="text-align: center; color: #aaa;">${selectedCalDateStr ? 'この日のメモはありません' : 'まだメモがありません'}</p>`;
+      logList.innerHTML = `<p style="text-align: center; color: #aaa;">${selectedCalDateStr ? 'この日のメモはありません' : '条件に該当するメモはありません'}</p>`;
       return;
     }
 
@@ -801,9 +924,10 @@
       return;
     }
 
+    // AIへ渡すメモは日付昇順でソートして整形
     const logsText = targetLogs
       .slice()
-      .reverse()
+      .sort((a, b) => a.date.localeCompare(b.date))
       .map(log => `[${log.date}] ${log.text}`)
       .join('\n');
 
