@@ -3,29 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>半期自己評価ジェネレーター</title>
+  <title>自己評価ジェネレーター</title>
   <style>
     :root {
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --border: #e2e8f0;
-      --text: #0f172a;
-      --text-muted: #64748b;
+      --splat-black: #111116;
+      --splat-card-bg: #1e1e24;
+      --splat-pink: #ff007f;
+      --splat-yellow: #e6fb04;
+      --splat-purple: #9d00ff;
+      --splat-cyan: #00f0ff;
+      --splat-white: #f0f0f8;
+      --border-color: #000000;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', 'Impact', sans-serif;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
+      background-color: var(--splat-black);
+      background-image: 
+        radial-gradient(var(--splat-purple) 15%, transparent 16%),
+        radial-gradient(var(--splat-pink) 15%, transparent 16%);
+      background-size: 60px 60px;
+      background-position: 0 0, 30px 30px;
+      color: var(--splat-white);
       padding: 20px;
     }
 
@@ -35,23 +40,35 @@
     }
 
     header {
+      text-align: center;
       margin-bottom: 24px;
+      background: var(--splat-yellow);
+      color: var(--splat-black);
+      border: 4px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 6px 6px 0 var(--splat-pink);
+      transform: rotate(-1deg);
     }
 
     h1 {
-      font-size: 1.8rem;
-      margin-bottom: 8px;
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0 var(--splat-white);
     }
 
     p.subtitle {
-      color: var(--text-muted);
+      font-weight: bold;
       font-size: 0.95rem;
+      margin-top: 4px;
     }
 
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 24px;
     }
 
     @media (max-width: 768px) {
@@ -61,130 +78,248 @@
     }
 
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--splat-card-bg);
+      border: 4px solid var(--border-color);
+      border-radius: 16px;
       padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      margin-bottom: 20px;
+      box-shadow: 6px 6px 0 var(--splat-purple);
+      margin-bottom: 24px;
+      position: relative;
     }
 
-    .card h2 {
-      font-size: 1.2rem;
+    .card-title {
+      display: inline-block;
+      background: var(--splat-pink);
+      color: var(--splat-white);
+      padding: 6px 18px;
+      border-radius: 8px;
+      border: 3px solid var(--border-color);
+      font-size: 1.1rem;
+      font-weight: 900;
       margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
+      transform: rotate(-2deg);
+      box-shadow: 3px 3px 0 var(--border-color);
     }
 
     .form-group {
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     label {
       display: block;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 4px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: var(--splat-yellow);
     }
 
     input[type="date"],
     input[type="password"],
-    input[type="text"],
+    input[type="number"],
     select,
     textarea {
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      padding: 10px;
+      border: 3px solid var(--border-color);
+      border-radius: 8px;
       font-size: 0.95rem;
-      background: #fff;
+      background: #ffffff;
+      color: #000;
+      font-weight: bold;
+      outline: none;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      box-shadow: 0 0 0 4px var(--splat-cyan);
     }
 
     textarea {
       resize: vertical;
     }
 
-    button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-weight: 600;
+    .btn {
+      display: inline-block;
+      width: 100%;
+      background-color: var(--splat-yellow);
+      color: var(--splat-black);
+      border: 3px solid var(--border-color);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 900;
       cursor: pointer;
-      transition: background-color 0.2s;
+      box-shadow: 4px 4px 0 var(--border-color);
+      transition: all 0.1s ease;
+      text-align: center;
     }
 
-    button:hover {
-      background-color: var(--primary-hover);
+    .btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 var(--border-color);
+      background-color: #f7ff42;
     }
 
-    button.btn-secondary {
-      background-color: #e2e8f0;
-      color: var(--text);
+    .btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 var(--border-color);
     }
 
-    button.btn-secondary:hover {
-      background-color: #cbd5e1;
+    .btn-secondary {
+      background-color: var(--splat-cyan);
+      color: var(--splat-black);
     }
 
-    button.btn-danger {
-      background-color: #ef4444;
-      color: white;
-      padding: 4px 8px;
+    .btn-edit {
+      background-color: var(--splat-yellow);
+      color: var(--splat-black);
+      width: auto;
+      padding: 4px 10px;
       font-size: 0.8rem;
+      box-shadow: 2px 2px 0 var(--border-color);
     }
 
-    button.btn-danger:hover {
-      background-color: #dc2626;
+    .btn-danger {
+      background-color: var(--splat-pink);
+      color: var(--splat-white);
+      width: auto;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      box-shadow: 2px 2px 0 var(--border-color);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 6px;
     }
 
     .log-list {
-      max-height: 350px;
+      max-height: 320px;
       overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-    }
-
-    .log-item {
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      flex-direction: column;
       gap: 12px;
     }
 
-    .log-item:last-child {
-      border-bottom: none;
+    .log-item {
+      background: #2a2a32;
+      border: 3px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: 3px 3px 0 var(--splat-cyan);
     }
 
     .log-date {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: bold;
-      color: var(--text-muted);
+      color: var(--splat-cyan);
       margin-bottom: 4px;
     }
 
     .log-content {
       white-space: pre-wrap;
       font-size: 0.9rem;
+      color: var(--splat-white);
     }
 
     .output-box {
       white-space: pre-wrap;
-      background: #f1f5f9;
+      background: #ffffff;
+      color: #000000;
+      font-weight: 500;
       padding: 16px;
-      border-radius: 6px;
-      min-height: 200px;
+      border-radius: 10px;
+      min-height: 220px;
       font-size: 0.95rem;
-      border: 1px solid var(--border);
+      border: 4px solid var(--border-color);
+      box-shadow: inset 3px 3px 0 rgba(0,0,0,0.1);
     }
 
-    .flex-gap {
+    .edit-textarea {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    /* イカバトル・ローディングアニメーション */
+    .splat-loading {
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 10px;
+      gap: 16px;
+    }
+
+    .squid-battle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 220px;
+      font-size: 2.5rem;
+      position: relative;
+    }
+
+    .squid-left {
+      animation: attack-left 0.8s infinite alternate ease-in-out;
+      transform: scaleX(-1);
+    }
+
+    .squid-right {
+      animation: attack-right 0.8s infinite alternate ease-in-out 0.4s;
+    }
+
+    .ink-ball {
+      font-size: 1.2rem;
+      position: absolute;
+      top: 30%;
+      opacity: 0;
+    }
+
+    .ink-pink {
+      left: 20%;
+      animation: fly-pink 0.8s infinite ease-in-out;
+    }
+
+    .ink-green {
+      right: 20%;
+      animation: fly-green 0.8s infinite ease-in-out 0.4s;
+    }
+
+    .loading-text {
+      font-weight: 900;
+      color: var(--splat-purple);
+      font-size: 1.1rem;
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes attack-left {
+      0% { transform: scaleX(-1) translateX(0) rotate(0deg); }
+      100% { transform: scaleX(-1) translateX(-15px) rotate(-15deg); }
+    }
+
+    @keyframes attack-right {
+      0% { transform: translateX(0) rotate(0deg); }
+      100% { transform: translateX(-15px) rotate(-15deg); }
+    }
+
+    @keyframes fly-pink {
+      0% { left: 25%; opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.4) translateY(-10px); }
+      100% { left: 70%; opacity: 0; transform: scale(0.8); }
+    }
+
+    @keyframes fly-green {
+      0% { right: 25%; opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.4) translateY(-10px); }
+      100% { right: 70%; opacity: 0; transform: scale(0.8); }
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
     }
   </style>
 </head>
@@ -192,24 +327,22 @@
 
 <div class="container">
   <header>
-    <h1>半期自己評価ジェネレーター</h1>
-    <p class="subtitle">日々の雑感・実績メモを記録し、半期ごとの自己評価文言を自動で生成します。</p>
+    <h1>自己評価ジェネレーター</h1>
+    <p class="subtitle">日々の雑感・実績メモを記録し、半期ごとの自己評価文章をAIが自動作成！</p>
   </header>
 
-  <!-- API Key & 設定エリア -->
-  <div class="card">
-    <h2>API設定</h2>
-    <div class="form-group">
+  <div class="card" style="box-shadow: 6px 6px 0 var(--splat-cyan);">
+    <div class="card-title" style="background: var(--splat-cyan); color: #000;">1. API KEY SETUP</div>
+    <div class="form-group" style="margin: 0;">
       <label for="apiKey">Gemini API Key</label>
-      <input type="password" id="apiKey" placeholder="AI Studioで取得したAPIキーを入力">
+      <input type="password" id="apiKey" placeholder="AI StudioのAPIキーを入力">
     </div>
   </div>
 
   <div class="grid">
-    <!-- 左カラム：メモ入力 & 履歴 -->
     <div>
       <div class="card">
-        <h2>日々のメモ登録</h2>
+        <div class="card-title">2. メモを記録</div>
         <form id="memoForm">
           <div class="form-group">
             <label for="memoDate">日付</label>
@@ -217,24 +350,23 @@
           </div>
           <div class="form-group">
             <label for="memoText">今日やったこと・雑感メモ</label>
-            <textarea id="memoText" rows="4" placeholder="例：〇〇プロジェクトのAPI設計完了。障害対応で原因特定まで進めた。開発フロー改善案を提案。" required></textarea>
+            <textarea id="memoText" rows="3" placeholder="例：〇〇プロジェクトの設計完了。障害対応で原因特定まで実施。" required></textarea>
           </div>
-          <button type="submit">メモを保存</button>
+          <button type="submit" class="btn">メモを保存！</button>
         </form>
       </div>
 
-      <div class="card">
-        <h2>メモ履歴</h2>
+      <div class="card" style="box-shadow: 6px 6px 0 var(--splat-yellow);">
+        <div class="card-title" style="background: var(--splat-purple);">3. 記録メモ一覧</div>
         <div class="log-list" id="logList">
-          <p style="padding: 12px; color: var(--text-muted); text-align: center;">まだメモがありません。</p>
+          <p style="text-align: center; color: #aaa;">まだメモがありません</p>
         </div>
       </div>
     </div>
 
-    <!-- 右カラム：評価作成エリア -->
     <div>
       <div class="card">
-        <h2>自己評価の生成</h2>
+        <div class="card-title" style="background: var(--splat-yellow); color: #000;">4. 評価作成</div>
         <div class="form-group">
           <label for="targetYear">対象年度</label>
           <input type="number" id="targetYear" min="2020" max="2030">
@@ -246,14 +378,16 @@
             <option value="H2">下期 (10月 〜 翌年3月)</option>
           </select>
         </div>
-        <button id="generateBtn" style="width: 100%; font-size: 1.1rem; padding: 12px;">自己評価を作成</button>
+        <button id="generateBtn" class="btn" style="background: var(--splat-pink); color: #fff; font-size: 1.2rem;">
+          自己評価を作成する！
+        </button>
       </div>
 
-      <div class="card">
-        <h2>生成結果</h2>
-        <div class="output-box" id="outputArea">（「自己評価を作成」を押すとここに文章が生成されます）</div>
+      <div class="card" style="box-shadow: 6px 6px 0 var(--splat-pink);">
+        <div class="card-title" style="background: var(--splat-cyan); color: #000;">RESULT</div>
+        <div class="output-box" id="outputArea">（「自己評価を作成する！」を押すとここに文章が生成されます）</div>
         <div style="margin-top: 12px; text-align: right;">
-          <button id="copyBtn" class="btn-secondary" style="display: none;">結果をコピー</button>
+          <button id="copyBtn" class="btn btn-secondary" style="display: none; width: auto;">結果をコピー！</button>
         </div>
       </div>
     </div>
@@ -261,13 +395,12 @@
 </div>
 
 <script>
-  // 初期設定とデータストレージ
   const STORAGE_KEY_LOGS = 'eval_memo_logs';
   const STORAGE_KEY_APIKEY = 'eval_gemini_apikey';
 
   let memoLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
+  let editingId = null;
 
-  // DOM要素
   const apiKeyInput = document.getElementById('apiKey');
   const memoForm = document.getElementById('memoForm');
   const memoDateInput = document.getElementById('memoDate');
@@ -279,22 +412,17 @@
   const outputArea = document.getElementById('outputArea');
   const copyBtn = document.getElementById('copyBtn');
 
-  // 初期化処理
   window.addEventListener('DOMContentLoaded', () => {
-    // 日付初期値（本日）
     memoDateInput.value = new Date().toISOString().split('T')[0];
 
-    // 年度初期値（現在の年度）
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = currentMonth < 4 ? now.getFullYear() - 1 : now.getFullYear();
     targetYearInput.value = currentYear;
     targetPeriodSelect.value = (currentMonth >= 4 && currentMonth <= 9) ? 'H1' : 'H2';
 
-    // API Key 読み込み
     apiKeyInput.value = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
 
-    // API Key 保存処理
     apiKeyInput.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.value.trim());
     });
@@ -302,7 +430,6 @@
     renderLogs();
   });
 
-  // メモ保存
   memoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const date = memoDateInput.value;
@@ -317,39 +444,81 @@
     renderLogs();
   });
 
-  // ログ削除
+  window.enableEdit = function(id) {
+    editingId = id;
+    renderLogs();
+  };
+
+  window.cancelEdit = function() {
+    editingId = null;
+    renderLogs();
+  };
+
+  window.saveEdit = function(id) {
+    const editText = document.getElementById(`edit-input-${id}`).value.trim();
+    if (!editText) return;
+
+    memoLogs = memoLogs.map(log => {
+      if (log.id === id) {
+        return { ...log, text: editText };
+      }
+      return log;
+    });
+
+    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
+    editingId = null;
+    renderLogs();
+  };
+
   window.deleteLog = function(id) {
     memoLogs = memoLogs.filter(log => log.id !== id);
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
     renderLogs();
   };
 
-  // メモ一覧描画
   function renderLogs() {
     if (memoLogs.length === 0) {
-      logList.innerHTML = '<p style="padding: 12px; color: var(--text-muted); text-align: center;">まだメモがありません。</p>';
+      logList.innerHTML = '<p style="text-align: center; color: #aaa;">まだメモがありません</p>';
       return;
     }
 
-    logList.innerHTML = memoLogs.map(log => `
-      <div class="log-item">
-        <div>
-          <div class="log-date">${log.date}</div>
-          <div class="log-content">${escapeHtml(log.text)}</div>
-        </div>
-        <button class="btn-danger" onclick="deleteLog(${log.id})">削除</button>
-      </div>
-    `).join('');
+    logList.innerHTML = memoLogs.map(log => {
+      if (log.id === editingId) {
+        return `
+          <div class="log-item" style="border-color: var(--splat-yellow);">
+            <div style="flex-grow: 1;">
+              <div class="log-date">${log.date} (編集中のメモ)</div>
+              <textarea id="edit-input-${log.id}" class="edit-textarea" rows="3">${escapeHtml(log.text)}</textarea>
+              <div class="btn-group">
+                <button class="btn btn-edit" onclick="saveEdit(${log.id})">保存</button>
+                <button class="btn btn-danger" onclick="cancelEdit()">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="log-item">
+            <div style="flex-grow: 1;">
+              <div class="log-date">▶ ${log.date}</div>
+              <div class="log-content">${escapeHtml(log.text)}</div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-edit" onclick="enableEdit(${log.id})">編集</button>
+              <button class="btn btn-danger" onclick="deleteLog(${log.id})">削除</button>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
   }
 
-  // HTMLエスケープ処理
   function escapeHtml(str) {
     return str.replace(/[&< me>"]/g, (tag) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[tag] || tag));
   }
 
-  // 期間フィルタリング関数（上期：4-9月、下期：10-翌年3月）
   function filterLogsByPeriod(year, period) {
     const startDate = period === 'H1' ? `${year}-04-01` : `${year}-10-01`;
     const endDate = period === 'H1' ? `${year}-09-30` : `${parseInt(year) + 1}-03-31`;
@@ -357,11 +526,10 @@
     return memoLogs.filter(log => log.date >= startDate && log.date <= endDate);
   }
 
-  // 自己評価生成
   generateBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
-      alert('Gemini API Key を入力してください。');
+      alert('Gemini API Key を入力してください！');
       return;
     }
 
@@ -376,7 +544,6 @@
       return;
     }
 
-    // ログを日付順（古い順）に並べ替え
     const logsText = targetLogs
       .slice()
       .reverse()
@@ -398,7 +565,18 @@ ${logsText}
 3. **総括（自己評価まとめ）**
    - この半期の振り返りと、今後の改善点や次期に向けた意気込みをフォーマルなビジネス文体（敬体：〜です・〜ます）でまとめてください。`;
 
-    outputArea.textContent = '生成中... 少々お待ちください。';
+    // イカバトルアニメーションを表示
+    outputArea.innerHTML = `
+      <div class="splat-loading">
+        <div class="squid-battle">
+          <span class="squid-left">🦑</span>
+          <span class="ink-ball ink-pink">💥</span>
+          <span class="ink-ball ink-green">💦</span>
+          <span class="squid-right">🦑</span>
+        </div>
+        <div class="loading-text">AIがインクを塗りまくり中...！</div>
+      </div>
+    `;
     generateBtn.disabled = true;
 
     try {
@@ -412,7 +590,7 @@ ${logsText}
 
       const data = await response.json();
       if (data.error) {
-        throw new Error(data.error.message || 'APIリクエストエラー');
+        throw new Error(data.error.message || 'APIエラー');
       }
 
       const generatedText = data.candidates[0].content.parts[0].text;
@@ -425,7 +603,6 @@ ${logsText}
     }
   });
 
-  // 結果コピー機能
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(outputArea.textContent).then(() => {
       alert('クリップボードにコピーしました！');
