@@ -192,8 +192,106 @@
       gap: 6px;
     }
 
+    /* タブ切り替えボタン UI */
+    .tab-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      background: #2a2a32;
+      color: var(--splat-white);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      background: var(--splat-cyan);
+      color: var(--splat-black);
+      box-shadow: 2px 2px 0 var(--border-color);
+    }
+
+    /* カレンダー UI */
+    .calendar-wrapper {
+      background: #2a2a32;
+      border: 3px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: var(--splat-yellow);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+
+    .calendar-day-head {
+      font-size: 0.75rem;
+      color: var(--splat-cyan);
+      font-weight: bold;
+      padding-bottom: 4px;
+    }
+
+    .calendar-day {
+      background: #1e1e24;
+      border: 1px solid #3a3a46;
+      border-radius: 6px;
+      min-height: 42px;
+      padding: 2px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.2s;
+    }
+
+    .calendar-day:hover {
+      background: #3a3a46;
+    }
+
+    .calendar-day.empty {
+      background: transparent;
+      border: none;
+      cursor: default;
+    }
+
+    .calendar-day.selected {
+      border: 2px solid var(--splat-yellow);
+      background: #3a3a46;
+    }
+
+    .calendar-day.has-memo {
+      background: #2c2540;
+      border-color: var(--splat-pink);
+    }
+
+    .memo-indicator {
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+
+    /* メモリスト */
     .log-list {
-      max-height: 320px;
+      max-height: 280px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -225,6 +323,7 @@
       color: var(--splat-white);
     }
 
+    /* 出力エリア */
     .output-box {
       white-space: pre-wrap;
       background: #ffffff;
@@ -358,6 +457,29 @@
 
       <div class="card" style="box-shadow: 6px 6px 0 var(--splat-yellow);">
         <div class="card-title" style="background: var(--splat-purple);">3. 記録メモ一覧</div>
+        
+        <!-- タブ切り替えボタン -->
+        <div class="tab-container">
+          <button type="button" class="tab-btn active" id="tabListBtn">全量一覧</button>
+          <button type="button" class="tab-btn" id="tabCalBtn">カレンダー</button>
+        </div>
+
+        <!-- カレンダービューエリア -->
+        <div id="calendarView" style="display: none;">
+          <div class="calendar-wrapper">
+            <div class="calendar-header">
+              <button type="button" class="btn btn-edit" id="prevMonthBtn">◀ 前月</button>
+              <span id="calendarMonthTitle">2026年 4月</span>
+              <button type="button" class="btn btn-edit" id="nextMonthBtn">次月 ▶</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+              <!-- カレンダーグリッドがここに動的に生成されます -->
+            </div>
+          </div>
+        </div>
+
+        <!-- メモ一覧エリア -->
+        <div id="selectedDateTitle" style="display: none; font-size: 0.85rem; font-weight: bold; color: var(--splat-yellow); margin-bottom: 8px;"></div>
         <div class="log-list" id="logList">
           <p style="text-align: center; color: #aaa;">まだメモがありません</p>
         </div>
@@ -401,6 +523,11 @@
   let memoLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
   let editingId = null;
 
+  // View state
+  let currentViewMode = 'list'; // 'list' | 'calendar'
+  let calendarDate = new Date();
+  let selectedCalDateStr = null;
+
   const apiKeyInput = document.getElementById('apiKey');
   const memoForm = document.getElementById('memoForm');
   const memoDateInput = document.getElementById('memoDate');
@@ -411,6 +538,16 @@
   const generateBtn = document.getElementById('generateBtn');
   const outputArea = document.getElementById('outputArea');
   const copyBtn = document.getElementById('copyBtn');
+
+  // Tab & Calendar elements
+  const tabListBtn = document.getElementById('tabListBtn');
+  const tabCalBtn = document.getElementById('tabCalBtn');
+  const calendarView = document.getElementById('calendarView');
+  const calendarMonthTitle = document.getElementById('calendarMonthTitle');
+  const calendarGrid = document.getElementById('calendarGrid');
+  const prevMonthBtn = document.getElementById('prevMonthBtn');
+  const nextMonthBtn = document.getElementById('nextMonthBtn');
+  const selectedDateTitle = document.getElementById('selectedDateTitle');
 
   window.addEventListener('DOMContentLoaded', () => {
     memoDateInput.value = new Date().toISOString().split('T')[0];
@@ -427,9 +564,105 @@
       localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.value.trim());
     });
 
+    renderUI();
+  });
+
+  // Tab Handlers
+  tabListBtn.addEventListener('click', () => {
+    currentViewMode = 'list';
+    selectedCalDateStr = null;
+    tabListBtn.classList.add('active');
+    tabCalBtn.classList.remove('active');
+    calendarView.style.display = 'none';
+    selectedDateTitle.style.display = 'none';
     renderLogs();
   });
 
+  tabCalBtn.addEventListener('click', () => {
+    currentViewMode = 'calendar';
+    tabCalBtn.classList.add('active');
+    tabListBtn.classList.remove('active');
+    calendarView.style.display = 'block';
+    renderCalendar();
+    renderLogs();
+  });
+
+  // Calendar Month Nav
+  prevMonthBtn.addEventListener('click', () => {
+    calendarDate.setMonth(calendarDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  nextMonthBtn.addEventListener('click', () => {
+    calendarDate.setMonth(calendarDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  // Render Calendar Grid
+  function renderCalendar() {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+
+    calendarMonthTitle.textContent = `${year}年 ${month + 1}月`;
+    calendarGrid.innerHTML = '';
+
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    days.forEach(d => {
+      const head = document.createElement('div');
+      head.className = 'calendar-day-head';
+      head.textContent = d;
+      calendarGrid.appendChild(head);
+    });
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    // Map memo counts per date
+    const memoDates = {};
+    memoLogs.forEach(log => {
+      memoDates[log.date] = (memoDates[log.date] || 0) + 1;
+    });
+
+    // Empty slots
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day empty';
+      calendarGrid.appendChild(emptyCell);
+    }
+
+    // Days
+    for (let day = 1; day <= totalDays; day++) {
+      const dayCell = document.createElement('div');
+      const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      dayCell.className = 'calendar-day';
+      if (memoDates[dayStr]) {
+        dayCell.classList.add('has-memo');
+      }
+      if (selectedCalDateStr === dayStr) {
+        dayCell.classList.add('selected');
+      }
+
+      dayCell.innerHTML = `
+        <div>${day}</div>
+        <div class="memo-indicator">${memoDates[dayStr] ? '🦑' : ''}</div>
+      `;
+
+      dayCell.addEventListener('click', () => {
+        if (selectedCalDateStr === dayStr) {
+          selectedCalDateStr = null; // Toggle unselect
+        } else {
+          selectedCalDateStr = dayStr;
+        }
+        renderCalendar();
+        renderLogs();
+      });
+
+      calendarGrid.appendChild(dayCell);
+    }
+  }
+
+  // メモ追加
   memoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const date = memoDateInput.value;
@@ -441,7 +674,7 @@
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
 
     memoTextInput.value = '';
-    renderLogs();
+    renderUI();
   });
 
   window.enableEdit = function(id) {
@@ -467,22 +700,46 @@
 
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
     editingId = null;
-    renderLogs();
+    renderUI();
   };
 
   window.deleteLog = function(id) {
     memoLogs = memoLogs.filter(log => log.id !== id);
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
-    renderLogs();
+    renderUI();
   };
 
+  function renderUI() {
+    if (currentViewMode === 'calendar') {
+      renderCalendar();
+    }
+    renderLogs();
+  }
+
+  // メモリスト描画
   function renderLogs() {
-    if (memoLogs.length === 0) {
-      logList.innerHTML = '<p style="text-align: center; color: #aaa;">まだメモがありません</p>';
+    let filteredLogs = memoLogs;
+
+    if (currentViewMode === 'calendar') {
+      if (selectedCalDateStr) {
+        filteredLogs = memoLogs.filter(log => log.date === selectedCalDateStr);
+        selectedDateTitle.style.display = 'block';
+        selectedDateTitle.textContent = `▶ ${selectedCalDateStr} のメモ (${filteredLogs.length}件)`;
+      } else {
+        selectedDateTitle.style.display = 'block';
+        selectedDateTitle.textContent = `▶ カレンダーの日付を選択すると日別メモが表示されます`;
+        filteredLogs = [];
+      }
+    } else {
+      selectedDateTitle.style.display = 'none';
+    }
+
+    if (filteredLogs.length === 0) {
+      logList.innerHTML = `<p style="text-align: center; color: #aaa;">${selectedCalDateStr ? 'この日のメモはありません' : 'まだメモがありません'}</p>`;
       return;
     }
 
-    logList.innerHTML = memoLogs.map(log => {
+    logList.innerHTML = filteredLogs.map(log => {
       if (log.id === editingId) {
         return `
           <div class="log-item" style="border-color: var(--splat-yellow);">
@@ -565,7 +822,6 @@ ${logsText}
 3. **総括（自己評価まとめ）**
    - この半期の振り返りと、今後の改善点や次期に向けた意気込みをフォーマルなビジネス文体（敬体：〜です・〜ます）でまとめてください。`;
 
-    // イカバトルアニメーションを表示
     outputArea.innerHTML = `
       <div class="splat-loading">
         <div class="squid-battle">
