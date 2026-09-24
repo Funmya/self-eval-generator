@@ -164,6 +164,11 @@
       box-shadow: 1px 1px 0 var(--border-color);
     }
 
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .btn-secondary {
       background-color: var(--splat-cyan);
       color: var(--splat-black);
@@ -494,7 +499,7 @@
             <label for="memoText">今日やったこと・雑感メモ</label>
             <textarea id="memoText" rows="3" placeholder="例：〇〇プロジェクトの設計完了。障害対応で原因特定まで実施。" required></textarea>
           </div>
-          <button type="submit" class="btn">メモを保存！</button>
+          <button type="submit" id="saveMemoBtn" class="btn">メモを保存！</button>
         </form>
       </div>
 
@@ -538,7 +543,7 @@
         <!-- メモ一覧エリア -->
         <div id="selectedDateTitle" style="display: none; font-size: 0.85rem; font-weight: bold; color: var(--splat-yellow); margin-bottom: 8px;"></div>
         <div class="log-list" id="logList">
-          <p style="text-align: center; color: #aaa;">まだメモがありません</p>
+          <p style="text-align: center; color: #aaa;">データを読み込み中...</p>
         </div>
       </div>
     </div>
@@ -573,11 +578,40 @@
   </div>
 </div>
 
-<script>
-  const STORAGE_KEY_LOGS = 'eval_memo_logs';
+<!-- Firebase SDK モジュール -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    doc, 
+    onSnapshot, 
+    query, 
+    orderBy, 
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+  // ⚠️ ご自身のFirebaseプロジェクトの設定情報に書き換えてください ⚠️
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Firebase の初期化
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const memoCollection = collection(db, "memos");
+
   const STORAGE_KEY_APIKEY = 'eval_gemini_apikey';
 
-  let memoLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
+  let memoLogs = [];
   let editingId = null;
 
   // View state
@@ -589,6 +623,7 @@
   const memoForm = document.getElementById('memoForm');
   const memoDateInput = document.getElementById('memoDate');
   const memoTextInput = document.getElementById('memoText');
+  const saveMemoBtn = document.getElementById('saveMemoBtn');
   const logList = document.getElementById('logList');
   const targetYearInput = document.getElementById('targetYear');
   const targetPeriodSelect = document.getElementById('targetPeriod');
@@ -628,12 +663,26 @@
     });
 
     initCalendarSelects();
-    renderUI();
+    listenToFirestore();
   });
+
+  // Firestoreからリアルタイムに同期
+  function listenToFirestore() {
+    const q = query(memoCollection, orderBy("date", "asc"));
+    onSnapshot(q, (snapshot) => {
+      memoLogs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      renderUI();
+    }, (error) => {
+      console.error("Firestore同期エラー:", error);
+      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firestoreの読み込みに失敗しました。設定を確認してください。</p>`;
+    });
+  }
 
   // 年月セレクトボックスの初期化
   function initCalendarSelects() {
-    // 2020年〜2030年
     calYearSelect.innerHTML = '';
     for (let y = 2020; y <= 2030; y++) {
       const opt = document.createElement('option');
@@ -642,11 +691,10 @@
       calYearSelect.appendChild(opt);
     }
 
-    // 1月〜12月
     calMonthSelect.innerHTML = '';
     for (let m = 1; m <= 12; m++) {
       const opt = document.createElement('option');
-      opt.value = m - 1; // 0-index
+      opt.value = m - 1;
       opt.textContent = `${m}月`;
       calMonthSelect.appendChild(opt);
     }
@@ -693,7 +741,7 @@
     renderLogs();
   });
 
-  // Calendar Month Nav Buttons
+  // Calendar Month Nav
   prevMonthBtn.addEventListener('click', () => {
     calendarDate.setMonth(calendarDate.getMonth() - 1);
     renderCalendar();
@@ -709,7 +757,6 @@
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
 
-    // セレクトボックスの同期
     calYearSelect.value = year;
     calMonthSelect.value = month;
 
@@ -726,20 +773,17 @@
     const firstDayIndex = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
 
-    // Map memo counts per date
     const memoDates = {};
     memoLogs.forEach(log => {
       memoDates[log.date] = (memoDates[log.date] || 0) + 1;
     });
 
-    // Empty slots
     for (let i = 0; i < firstDayIndex; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'calendar-day empty';
       calendarGrid.appendChild(emptyCell);
     }
 
-    // Days
     for (let day = 1; day <= totalDays; day++) {
       const dayCell = document.createElement('div');
       const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -759,7 +803,7 @@
 
       dayCell.addEventListener('click', () => {
         if (selectedCalDateStr === dayStr) {
-          selectedCalDateStr = null; // Toggle unselect
+          selectedCalDateStr = null;
         } else {
           selectedCalDateStr = dayStr;
         }
@@ -771,19 +815,27 @@
     }
   }
 
-  // メモ追加
-  memoForm.addEventListener('submit', (e) => {
+  // メモ追加 (Firestore)
+  memoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const date = memoDateInput.value;
     const text = memoTextInput.value.trim();
 
     if (!date || !text) return;
 
-    memoLogs.push({ id: Date.now(), date, text });
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
-
-    memoTextInput.value = '';
-    renderUI();
+    saveMemoBtn.disabled = true;
+    try {
+      await addDoc(memoCollection, {
+        date: date,
+        text: text,
+        createdAt: serverTimestamp()
+      });
+      memoTextInput.value = '';
+    } catch (err) {
+      alert('メモの保存に失敗しました: ' + err.message);
+    } finally {
+      saveMemoBtn.disabled = false;
+    }
   });
 
   window.enableEdit = function(id) {
@@ -796,26 +848,33 @@
     renderLogs();
   };
 
-  window.saveEdit = function(id) {
+  // メモ編集 (Firestore)
+  window.saveEdit = async function(id) {
     const editText = document.getElementById(`edit-input-${id}`).value.trim();
     if (!editText) return;
 
-    memoLogs = memoLogs.map(log => {
-      if (log.id === id) {
-        return { ...log, text: editText };
-      }
-      return log;
-    });
-
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
-    editingId = null;
-    renderUI();
+    try {
+      const docRef = doc(db, "memos", id);
+      await updateDoc(docRef, {
+        text: editText,
+        updatedAt: serverTimestamp()
+      });
+      editingId = null;
+    } catch (err) {
+      alert('編集の保存に失敗しました: ' + err.message);
+    }
   };
 
-  window.deleteLog = function(id) {
-    memoLogs = memoLogs.filter(log => log.id !== id);
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(memoLogs));
-    renderUI();
+  // メモ削除 (Firestore)
+  window.deleteLog = async function(id) {
+    if (!confirm('このメモを削除してもよろしいですか？')) return;
+
+    try {
+      const docRef = doc(db, "memos", id);
+      await deleteDoc(docRef);
+    } catch (err) {
+      alert('削除に失敗しました: ' + err.message);
+    }
   };
 
   function renderUI() {
@@ -840,10 +899,9 @@
         filteredLogs = [];
       }
     } else {
-      // 全量一覧表示：日付の昇順ソート（古い順）
+      // 日付の昇順ソート
       filteredLogs.sort((a, b) => a.date.localeCompare(b.date));
 
-      // 表示範囲フィルター（開始日・終了日）
       const start = filterStartDate.value;
       const end = filterEndDate.value;
 
@@ -870,7 +928,7 @@
               <div class="log-date">${log.date} (編集中のメモ)</div>
               <textarea id="edit-input-${log.id}" class="edit-textarea" rows="3">${escapeHtml(log.text)}</textarea>
               <div class="btn-group">
-                <button class="btn btn-edit" onclick="saveEdit(${log.id})">保存</button>
+                <button class="btn btn-edit" onclick="saveEdit('${log.id}')">保存</button>
                 <button class="btn btn-danger" onclick="cancelEdit()">キャンセル</button>
               </div>
             </div>
@@ -884,8 +942,8 @@
               <div class="log-content">${escapeHtml(log.text)}</div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-edit" onclick="enableEdit(${log.id})">編集</button>
-              <button class="btn btn-danger" onclick="deleteLog(${log.id})">削除</button>
+              <button class="btn btn-edit" onclick="enableEdit('${log.id}')">編集</button>
+              <button class="btn btn-danger" onclick="deleteLog('${log.id}')">削除</button>
             </div>
           </div>
         `;
@@ -924,7 +982,6 @@
       return;
     }
 
-    // AIへ渡すメモは日付昇順でソートして整形
     const logsText = targetLogs
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
