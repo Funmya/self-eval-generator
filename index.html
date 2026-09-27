@@ -105,14 +105,27 @@
       margin-bottom: 14px;
     }
 
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
     label {
       display: block;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: bold;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       color: var(--splat-yellow);
     }
 
+    input[type="text"],
     input[type="date"],
     input[type="password"],
     input[type="number"],
@@ -122,7 +135,7 @@
       padding: 10px;
       border: 3px solid var(--border-color);
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       background: #ffffff;
       color: #000;
       font-weight: bold;
@@ -192,9 +205,32 @@
       box-shadow: 2px 2px 0 var(--border-color);
     }
 
+    .btn-action {
+      background-color: var(--splat-cyan);
+      color: var(--splat-black);
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      border: 2px solid var(--border-color);
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--border-color);
+    }
+
+    .btn-action:hover {
+      background-color: #70f7ff;
+    }
+
     .btn-group {
       display: flex;
       gap: 6px;
+    }
+
+    .export-btn-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      justify-content: flex-end;
     }
 
     /* タブ切り替えボタン UI */
@@ -478,12 +514,47 @@
     <p class="subtitle">日々の雑感・実績メモを記録し、半期ごとの自己評価文章をAIが自動作成！</p>
   </header>
 
+  <!-- 1. 設定エリア（Gemini & Firebase） -->
   <div class="card" style="box-shadow: 6px 6px 0 var(--splat-cyan);">
-    <div class="card-title" style="background: var(--splat-cyan); color: #000;">1. API KEY SETUP</div>
-    <div class="form-group" style="margin: 0;">
+    <div class="card-title" style="background: var(--splat-cyan); color: #000;">1. API & FIREBASE SETUP</div>
+    
+    <div class="form-group">
       <label for="apiKey">Gemini API Key</label>
       <input type="password" id="apiKey" placeholder="AI StudioのAPIキーを入力">
     </div>
+
+    <details style="margin-top: 10px; cursor: pointer;">
+      <summary style="font-weight: bold; color: var(--splat-yellow); font-size: 0.95rem;">🔥 Firebase接続設定 (Firestore)</summary>
+      <form id="firebaseConfigForm" style="margin-top: 10px;">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="fbApiKey">apiKey</label>
+            <input type="text" id="fbApiKey" placeholder="AIzaSy..." required>
+          </div>
+          <div class="form-group">
+            <label for="fbAuthDomain">authDomain</label>
+            <input type="text" id="fbAuthDomain" placeholder="project-id.firebaseapp.com" required>
+          </div>
+          <div class="form-group">
+            <label for="fbProjectId">projectId</label>
+            <input type="text" id="fbProjectId" placeholder="project-id" required>
+          </div>
+          <div class="form-group">
+            <label for="fbStorageBucket">storageBucket</label>
+            <input type="text" id="fbStorageBucket" placeholder="project-id.appspot.com">
+          </div>
+          <div class="form-group">
+            <label for="fbMessagingSenderId">messagingSenderId</label>
+            <input type="text" id="fbMessagingSenderId" placeholder="123456789">
+          </div>
+          <div class="form-group">
+            <label for="fbAppId">appId</label>
+            <input type="text" id="fbAppId" placeholder="1:123456789:web:abcdef" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-secondary" style="font-size: 0.95rem; padding: 8px;">Firebaseに接続・保存</button>
+      </form>
+    </details>
   </div>
 
   <div class="grid">
@@ -540,10 +611,16 @@
           </div>
         </div>
 
+        <!-- TSVコピー・DLボタンエリア -->
+        <div class="export-btn-group">
+          <button type="button" class="btn-action" id="copyTsvBtn">📋 TSVコピー</button>
+          <button type="button" class="btn-action" id="downloadTxtBtn">📥 TXT保存</button>
+        </div>
+
         <!-- メモ一覧エリア -->
         <div id="selectedDateTitle" style="display: none; font-size: 0.85rem; font-weight: bold; color: var(--splat-yellow); margin-bottom: 8px;"></div>
         <div class="log-list" id="logList">
-          <p style="text-align: center; color: #aaa;">データを読み込み中...</p>
+          <p style="text-align: center; color: #aaa;">Firebaseの設定を入力して接続してください</p>
         </div>
       </div>
     </div>
@@ -580,7 +657,7 @@
 
 <!-- Firebase SDK モジュール -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
   import { 
     getFirestore, 
     collection, 
@@ -594,26 +671,15 @@
     serverTimestamp 
   } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-  // ⚠️ ご自身のFirebaseプロジェクトの設定情報に書き換えてください ⚠️
-  const firebaseConfig = {
-    apiKey: "AIzaSyCUuwj0x38KRDJKw_1IYPDSCDFhc0pIytY",
-    authDomain: "self-eval-generator-9a3c6.firebaseapp.com",
-    databaseURL: "https://self-eval-generator-9a3c6-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "self-eval-generator-9a3c6",
-    storageBucket: "self-eval-generator-9a3c6.firebasestorage.app",
-    messagingSenderId: "839999486391",
-    appId: "1:839999486391:web:1ba791b72982d138521032",
-    measurementId: "G-1HFLYPZKYW"
-  };
-
-  // Firebase の初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const memoCollection = collection(db, "memos");
-
   const STORAGE_KEY_APIKEY = 'eval_gemini_apikey';
+  const STORAGE_KEY_FIREBASE = 'eval_firebase_config';
+
+  let db = null;
+  let memoCollection = null;
+  let unsubscribeSnapshot = null;
 
   let memoLogs = [];
+  let currentFilteredLogs = []; // 現在画面に表示/絞り込まれているメモ一覧
   let editingId = null;
 
   // View state
@@ -633,6 +699,15 @@
   const outputArea = document.getElementById('outputArea');
   const copyBtn = document.getElementById('copyBtn');
 
+  // Firebase input fields
+  const firebaseConfigForm = document.getElementById('firebaseConfigForm');
+  const fbApiKey = document.getElementById('fbApiKey');
+  const fbAuthDomain = document.getElementById('fbAuthDomain');
+  const fbProjectId = document.getElementById('fbProjectId');
+  const fbStorageBucket = document.getElementById('fbStorageBucket');
+  const fbMessagingSenderId = document.getElementById('fbMessagingSenderId');
+  const fbAppId = document.getElementById('fbAppId');
+
   // Tab & Filter & Calendar elements
   const tabListBtn = document.getElementById('tabListBtn');
   const tabCalBtn = document.getElementById('tabCalBtn');
@@ -649,6 +724,10 @@
   const nextMonthBtn = document.getElementById('nextMonthBtn');
   const selectedDateTitle = document.getElementById('selectedDateTitle');
 
+  // TSV & Export Buttons
+  const copyTsvBtn = document.getElementById('copyTsvBtn');
+  const downloadTxtBtn = document.getElementById('downloadTxtBtn');
+
   window.addEventListener('DOMContentLoaded', () => {
     memoDateInput.value = new Date().toISOString().split('T')[0];
 
@@ -658,20 +737,79 @@
     targetYearInput.value = currentYear;
     targetPeriodSelect.value = (currentMonth >= 4 && currentMonth <= 9) ? 'H1' : 'H2';
 
+    // Gemini API Key 復元
     apiKeyInput.value = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
-
     apiKeyInput.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.value.trim());
     });
 
     initCalendarSelects();
-    listenToFirestore();
+
+    // Firebase Config 復元＆初期化
+    const savedFbConfig = localStorage.getItem(STORAGE_KEY_FIREBASE);
+    if (savedFbConfig) {
+      try {
+        const config = JSON.parse(savedFbConfig);
+        fbApiKey.value = config.apiKey || '';
+        fbAuthDomain.value = config.authDomain || '';
+        fbProjectId.value = config.projectId || '';
+        fbStorageBucket.value = config.storageBucket || '';
+        fbMessagingSenderId.value = config.messagingSenderId || '';
+        fbAppId.value = config.appId || '';
+
+        initFirebase(config);
+      } catch (e) {
+        console.error("Firebase config restoration error:", e);
+      }
+    }
   });
+
+  // Firebaseフォーム保存・接続処理
+  firebaseConfigForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const config = {
+      apiKey: fbApiKey.value.trim(),
+      authDomain: fbAuthDomain.value.trim(),
+      projectId: fbProjectId.value.trim(),
+      storageBucket: fbStorageBucket.value.trim(),
+      messagingSenderId: fbMessagingSenderId.value.trim(),
+      appId: fbAppId.value.trim()
+    };
+
+    localStorage.setItem(STORAGE_KEY_FIREBASE, JSON.stringify(config));
+    initFirebase(config);
+    alert('Firebase接続情報を更新・保存しました！');
+  });
+
+  // Firebase の動的初期化＆リスナー開始
+  function initFirebase(config) {
+    if (unsubscribeSnapshot) {
+      unsubscribeSnapshot();
+    }
+
+    try {
+      const existingApps = getApps();
+      if (existingApps.length > 0) {
+        deleteApp(existingApps[0]);
+      }
+
+      const app = initializeApp(config);
+      db = getFirestore(app);
+      memoCollection = collection(db, "memos");
+
+      listenToFirestore();
+    } catch (err) {
+      console.error("Firebase Initialization Error:", err);
+      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firebaseへの接続に失敗しました。設定値を確認してください。</p>`;
+    }
+  }
 
   // Firestoreからリアルタイムに同期
   function listenToFirestore() {
+    if (!memoCollection) return;
+
     const q = query(memoCollection, orderBy("date", "asc"));
-    onSnapshot(q, (snapshot) => {
+    unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
       memoLogs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -679,7 +817,7 @@
       renderUI();
     }, (error) => {
       console.error("Firestore同期エラー:", error);
-      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firestoreの読み込みに失敗しました。設定を確認してください。</p>`;
+      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firestoreの読み込みに失敗しました。ルールや設定を確認してください。</p>`;
     });
   }
 
@@ -820,6 +958,11 @@
   // メモ追加 (Firestore)
   memoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!memoCollection) {
+      alert('Firebaseの設定を行ってから保存してください。');
+      return;
+    }
+
     const date = memoDateInput.value;
     const text = memoTextInput.value.trim();
 
@@ -888,6 +1031,8 @@
 
   // メモリスト描画
   function renderLogs() {
+    if (!memoCollection) return;
+
     let filteredLogs = [...memoLogs];
 
     if (currentViewMode === 'calendar') {
@@ -916,6 +1061,9 @@
 
       selectedDateTitle.style.display = 'none';
     }
+
+    // 現在画面に反映されているログリストを保持（出力用）
+    currentFilteredLogs = filteredLogs;
 
     if (filteredLogs.length === 0) {
       logList.innerHTML = `<p style="text-align: center; color: #aaa;">${selectedCalDateStr ? 'この日のメモはありません' : '条件に該当するメモはありません'}</p>`;
@@ -952,6 +1100,55 @@
       }
     }).join('');
   }
+
+  // TSVテキスト生成用ヘルパー（改行はスペース置換）
+  function generateTsvText() {
+    if (!currentFilteredLogs || currentFilteredLogs.length === 0) return '';
+
+    return currentFilteredLogs
+      .map(log => {
+        const cleanText = log.text.replace(/\r?\n/g, ' ');
+        return `${log.date}\t${cleanText}`;
+      })
+      .join('\n');
+  }
+
+  // TSVクリップボードコピー処理
+  copyTsvBtn.addEventListener('click', () => {
+    const tsvData = generateTsvText();
+    if (!tsvData) {
+      alert('コピー対象のメモがありません。');
+      return;
+    }
+
+    navigator.clipboard.writeText(tsvData).then(() => {
+      alert(`${currentFilteredLogs.length}件のメモをTSV形式でクリップボードにコピーしました！\nExcelやGoogleスプレッドシートに直接貼り付けできます。`);
+    }).catch(err => {
+      alert('コピーに失敗しました: ' + err);
+    });
+  });
+
+  // テキストファイル（.txt / TSV形式）ダウンロード処理
+  downloadTxtBtn.addEventListener('click', () => {
+    const tsvData = generateTsvText();
+    if (!tsvData) {
+      alert('出力対象のメモがありません。');
+      return;
+    }
+
+    const blob = new Blob([tsvData], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const now = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.download = `memo_export_${now}.txt`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
 
   function escapeHtml(str) {
     return str.replace(/[&< me>"]/g, (tag) => ({
