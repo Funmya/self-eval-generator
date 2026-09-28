@@ -215,10 +215,16 @@
       font-weight: bold;
       cursor: pointer;
       box-shadow: 2px 2px 0 var(--border-color);
+      transition: background-color 0.2s, transform 0.1s;
     }
 
     .btn-action:hover {
       background-color: #70f7ff;
+    }
+
+    .btn-action.success {
+      background-color: var(--splat-yellow) !important;
+      color: var(--splat-black) !important;
     }
 
     .btn-group {
@@ -778,7 +784,6 @@
 
     localStorage.setItem(STORAGE_KEY_FIREBASE, JSON.stringify(config));
     initFirebase(config);
-    alert('Firebase接続情報を更新・保存しました！');
   });
 
   // Firebase の動的初期化＆リスナー開始
@@ -1113,28 +1118,35 @@
       .join('\n');
   }
 
+  // ボタンの表示テキストを一時変更するユーティリティ関数
+  function showTemporarySuccess(btnElement, successText, originalText) {
+    btnElement.textContent = successText;
+    btnElement.classList.add('success');
+    btnElement.disabled = true;
+
+    setTimeout(() => {
+      btnElement.textContent = originalText;
+      btnElement.classList.remove('success');
+      btnElement.disabled = false;
+    }, 2000);
+  }
+
   // TSVクリップボードコピー処理
   copyTsvBtn.addEventListener('click', () => {
     const tsvData = generateTsvText();
-    if (!tsvData) {
-      alert('コピー対象のメモがありません。');
-      return;
-    }
+    if (!tsvData) return;
 
     navigator.clipboard.writeText(tsvData).then(() => {
-      alert(`${currentFilteredLogs.length}件のメモをTSV形式でクリップボードにコピーしました！\nExcelやGoogleスプレッドシートに直接貼り付けできます。`);
+      showTemporarySuccess(copyTsvBtn, '✅ コピー完了！', '📋 TSVコピー');
     }).catch(err => {
-      alert('コピーに失敗しました: ' + err);
+      console.error('コピー失敗:', err);
     });
   });
 
   // テキストファイル（.txt / TSV形式）ダウンロード処理
   downloadTxtBtn.addEventListener('click', () => {
     const tsvData = generateTsvText();
-    if (!tsvData) {
-      alert('出力対象のメモがありません。');
-      return;
-    }
+    if (!tsvData) return;
 
     const blob = new Blob([tsvData], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1148,6 +1160,8 @@
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    showTemporarySuccess(downloadTxtBtn, '✅ 保存完了！', '📥 TXT保存');
   });
 
   function escapeHtml(str) {
@@ -1239,9 +1253,10 @@ ${logsText}
     }
   });
 
+  // AI生成結果のコピー処理（こちらも同様に2秒間のボタンラベル変更対応）
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(outputArea.textContent).then(() => {
-      alert('クリップボードにコピーしました！');
+      showTemporarySuccess(copyBtn, '✅ コピー完了！', '結果をコピー！');
     });
   });
 </script>
