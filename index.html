@@ -413,18 +413,45 @@
       color: var(--splat-white);
     }
 
-    /* 出力エリア */
+    /* 成果物出力エリア（項目別カード） */
+    .result-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .result-item-card {
+      background: #2a2a32;
+      border: 3px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 3px 3px 0 var(--splat-cyan);
+    }
+
+    .result-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .result-item-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--splat-yellow);
+    }
+
     .output-box {
       white-space: pre-wrap;
       background: #ffffff;
       color: #000000;
       font-weight: 500;
-      padding: 16px;
-      border-radius: 10px;
-      min-height: 220px;
-      font-size: 0.95rem;
-      border: 4px solid var(--border-color);
-      box-shadow: inset 3px 3px 0 rgba(0,0,0,0.1);
+      padding: 12px;
+      border-radius: 8px;
+      min-height: 100px;
+      font-size: 0.9rem;
+      border: 2px solid var(--border-color);
+      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
     }
 
     .edit-textarea {
@@ -611,9 +638,7 @@
               </div>
               <button type="button" class="btn btn-edit" id="nextMonthBtn">▶</button>
             </div>
-            <div class="calendar-grid" id="calendarGrid">
-              <!-- カレンダーグリッドがここに動的に生成されます -->
-            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
           </div>
         </div>
 
@@ -651,10 +676,10 @@
       </div>
 
       <div class="card" style="box-shadow: 6px 6px 0 var(--splat-pink);">
-        <div class="card-title" style="background: var(--splat-cyan); color: #000;">RESULT</div>
-        <div class="output-box" id="outputArea">（「自己評価を作成する！」を押すとここに文章が生成されます）</div>
-        <div style="margin-top: 12px; text-align: right;">
-          <button id="copyBtn" class="btn btn-secondary" style="display: none; width: auto;">結果をコピー！</button>
+        <div class="card-title" style="background: var(--splat-cyan); color: #000;">RESULT (項目別出力)</div>
+        
+        <div id="resultContainer" class="result-section">
+          <div style="text-align: center; color: #777; padding: 20px;">（「自己評価を作成する！」を押すと項目別に生成されます）</div>
         </div>
       </div>
     </div>
@@ -685,11 +710,11 @@
   let unsubscribeSnapshot = null;
 
   let memoLogs = [];
-  let currentFilteredLogs = []; // 現在画面に表示/絞り込まれているメモ一覧
+  let currentFilteredLogs = [];
   let editingId = null;
 
   // View state
-  let currentViewMode = 'list'; // 'list' | 'calendar'
+  let currentViewMode = 'list';
   let calendarDate = new Date();
   let selectedCalDateStr = null;
 
@@ -702,8 +727,7 @@
   const targetYearInput = document.getElementById('targetYear');
   const targetPeriodSelect = document.getElementById('targetPeriod');
   const generateBtn = document.getElementById('generateBtn');
-  const outputArea = document.getElementById('outputArea');
-  const copyBtn = document.getElementById('copyBtn');
+  const resultContainer = document.getElementById('resultContainer');
 
   // Firebase input fields
   const firebaseConfigForm = document.getElementById('firebaseConfigForm');
@@ -743,7 +767,6 @@
     targetYearInput.value = currentYear;
     targetPeriodSelect.value = (currentMonth >= 4 && currentMonth <= 9) ? 'H1' : 'H2';
 
-    // Gemini API Key 復元
     apiKeyInput.value = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
     apiKeyInput.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.value.trim());
@@ -751,7 +774,6 @@
 
     initCalendarSelects();
 
-    // Firebase Config 復元＆初期化
     const savedFbConfig = localStorage.getItem(STORAGE_KEY_FIREBASE);
     if (savedFbConfig) {
       try {
@@ -770,7 +792,6 @@
     }
   });
 
-  // Firebaseフォーム保存・接続処理
   firebaseConfigForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const config = {
@@ -786,7 +807,6 @@
     initFirebase(config);
   });
 
-  // Firebase の動的初期化＆リスナー開始
   function initFirebase(config) {
     if (unsubscribeSnapshot) {
       unsubscribeSnapshot();
@@ -809,7 +829,6 @@
     }
   }
 
-  // Firestoreからリアルタイムに同期
   function listenToFirestore() {
     if (!memoCollection) return;
 
@@ -822,11 +841,10 @@
       renderUI();
     }, (error) => {
       console.error("Firestore同期エラー:", error);
-      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firestoreの読み込みに失敗しました。ルールや設定を確認してください。</p>`;
+      logList.innerHTML = `<p style="text-align: center; color: var(--splat-pink);">Firestoreの読み込みに失敗しました。</p>`;
     });
   }
 
-  // 年月セレクトボックスの初期化
   function initCalendarSelects() {
     calYearSelect.innerHTML = '';
     for (let y = 2020; y <= 2030; y++) {
@@ -855,7 +873,6 @@
     });
   }
 
-  // Filter Handlers
   filterStartDate.addEventListener('change', renderLogs);
   filterEndDate.addEventListener('change', renderLogs);
   clearFilterBtn.addEventListener('click', () => {
@@ -864,7 +881,6 @@
     renderLogs();
   });
 
-  // Tab Handlers
   tabListBtn.addEventListener('click', () => {
     currentViewMode = 'list';
     selectedCalDateStr = null;
@@ -886,7 +902,6 @@
     renderLogs();
   });
 
-  // Calendar Month Nav
   prevMonthBtn.addEventListener('click', () => {
     calendarDate.setMonth(calendarDate.getMonth() - 1);
     renderCalendar();
@@ -897,7 +912,6 @@
     renderCalendar();
   });
 
-  // Render Calendar Grid
   function renderCalendar() {
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
@@ -960,7 +974,6 @@
     }
   }
 
-  // メモ追加 (Firestore)
   memoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!memoCollection) {
@@ -998,33 +1011,28 @@
     renderLogs();
   };
 
-  // メモ編集 (Firestore)
-  window.saveEdit = async function(id) {
+  window.saveEdit = function(id) {
     const editText = document.getElementById(`edit-input-${id}`).value.trim();
     if (!editText) return;
 
-    try {
-      const docRef = doc(db, "memos", id);
-      await updateDoc(docRef, {
-        text: editText,
-        updatedAt: serverTimestamp()
-      });
+    const docRef = doc(db, "memos", id);
+    updateDoc(docRef, {
+      text: editText,
+      updatedAt: serverTimestamp()
+    }).then(() => {
       editingId = null;
-    } catch (err) {
+    }).catch(err => {
       alert('編集の保存に失敗しました: ' + err.message);
-    }
+    });
   };
 
-  // メモ削除 (Firestore)
-  window.deleteLog = async function(id) {
+  window.deleteLog = function(id) {
     if (!confirm('このメモを削除してもよろしいですか？')) return;
 
-    try {
-      const docRef = doc(db, "memos", id);
-      await deleteDoc(docRef);
-    } catch (err) {
+    const docRef = doc(db, "memos", id);
+    deleteDoc(docRef).catch(err => {
       alert('削除に失敗しました: ' + err.message);
-    }
+    });
   };
 
   function renderUI() {
@@ -1034,7 +1042,6 @@
     renderLogs();
   }
 
-  // メモリスト描画
   function renderLogs() {
     if (!memoCollection) return;
 
@@ -1051,7 +1058,6 @@
         filteredLogs = [];
       }
     } else {
-      // 日付の昇順ソート
       filteredLogs.sort((a, b) => a.date.localeCompare(b.date));
 
       const start = filterStartDate.value;
@@ -1067,7 +1073,6 @@
       selectedDateTitle.style.display = 'none';
     }
 
-    // 現在画面に反映されているログリストを保持（出力用）
     currentFilteredLogs = filteredLogs;
 
     if (filteredLogs.length === 0) {
@@ -1106,10 +1111,8 @@
     }).join('');
   }
 
-  // TSVテキスト生成用ヘルパー（改行はスペース置換）
   function generateTsvText() {
     if (!currentFilteredLogs || currentFilteredLogs.length === 0) return '';
-
     return currentFilteredLogs
       .map(log => {
         const cleanText = log.text.replace(/\r?\n/g, ' ');
@@ -1118,7 +1121,6 @@
       .join('\n');
   }
 
-  // ボタンの表示テキストを一時変更するユーティリティ関数
   function showTemporarySuccess(btnElement, successText, originalText) {
     btnElement.textContent = successText;
     btnElement.classList.add('success');
@@ -1131,19 +1133,15 @@
     }, 2000);
   }
 
-  // TSVクリップボードコピー処理
   copyTsvBtn.addEventListener('click', () => {
     const tsvData = generateTsvText();
     if (!tsvData) return;
 
     navigator.clipboard.writeText(tsvData).then(() => {
       showTemporarySuccess(copyTsvBtn, '✅ コピー完了！', '📋 TSVコピー');
-    }).catch(err => {
-      console.error('コピー失敗:', err);
     });
   });
 
-  // テキストファイル（.txt / TSV形式）ダウンロード処理
   downloadTxtBtn.addEventListener('click', () => {
     const tsvData = generateTsvText();
     if (!tsvData) return;
@@ -1177,6 +1175,16 @@
     return memoLogs.filter(log => log.date >= startDate && log.date <= endDate);
   }
 
+  // 項目ごとの個別コピー用グローバル関数
+  window.copySectionText = function(btnElem, boxId) {
+    const text = document.getElementById(boxId).textContent;
+    if (!text || text.includes('（まだ生成されていません）')) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+      showTemporarySuccess(btnElem, '✅ コピー完了！', '結果をコピー');
+    });
+  };
+
   generateBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
@@ -1203,20 +1211,46 @@
 
     const prompt = `あなたはプロフェッショナルなビジネスパーソンおよび評価者です。
 以下は、社員が日頃記録した業務メモ（${year}年度 ${periodName}）です。
-このメモの内容を整理し、会社提出用の「半期自己評価・振り返り文章」を作成してください。
+このメモの内容を分析し、会社提出用の自己評価文章を以下の指定された7つの項目ごとに分けてJSON形式、または明確な見出し形式で作成してください。
+※日々のメモから該当する情報推測し、可能な限りすべての項目について具体的かつフォーマルなビジネス文体（敬体：〜です・〜ます）で作成してください。
+
+### 対象の7項目:
+1. 総評 (overall) ※必須
+2. 勤怠健康管理について (health)
+3. 新しくできるようになったこと (new_skills)
+4. 自主的に意識して継続的に実施してきたこと (continuous_efforts)
+5. 現場で評価頂いたこと ※社内／社外問わず (evaluations)
+6. 現場への貢献や自己研鑽として意識して取り組んでいること (contribution)
+7. 今後の自らの課題または目標管理として掲げていること (goals)
+
+### 出力フォーマット:
+必ず以下の見出し文字列をそのまま使用して、それぞれのセクションを出力してください。各セクションの文章以外は含めないでください。
+
+---SECTION:overall---
+[ここに総評の文章]
+
+---SECTION:health---
+[ここに勤怠健康管理についての文章]
+
+---SECTION:new_skills---
+[ここに新しくできるようになったことの文章]
+
+---SECTION:continuous_efforts---
+[ここに自主的に意識して継続的に実施してきたことの文章]
+
+---SECTION:evaluations---
+[ここに現場で評価頂いたことの文章]
+
+---SECTION:contribution---
+[ここに現場への貢献や自己研鑽についての文章]
+
+---SECTION:goals---
+[ここに今後の課題または目標管理の文章]
 
 ### 日々のメモ内容:
-${logsText}
+${logsText}`;
 
-### 出力フォーマット指示:
-1. **業務実績・取り組み成果の要約**
-   - 実施した主要業務やプロジェクトをカテゴリごとに整理し、客観的・構造的にまとめてください。
-2. **成果と課題・工夫した点**
-   - 取り組みにおける工夫や成果、直面した課題への対応を箇条書き等でわかりやすく記載してください。
-3. **総括（自己評価まとめ）**
-   - この半期の振り返りと、今後の改善点や次期に向けた意気込みをフォーマルなビジネス文体（敬体：〜です・〜ます）でまとめてください。`;
-
-    outputArea.innerHTML = `
+    resultContainer.innerHTML = `
       <div class="splat-loading">
         <div class="squid-battle">
           <span class="squid-left">🦑</span>
@@ -1244,21 +1278,93 @@ ${logsText}
       }
 
       const generatedText = data.candidates[0].content.parts[0].text;
-      outputArea.textContent = generatedText;
-      copyBtn.style.display = 'inline-block';
+      
+      // セクションごとにパース
+      const sections = {
+        overall: parseSection(generatedText, 'overall'),
+        health: parseSection(generatedText, 'health'),
+        new_skills: parseSection(generatedText, 'new_skills'),
+        continuous_efforts: parseSection(generatedText, 'continuous_efforts'),
+        evaluations: parseSection(generatedText, 'evaluations'),
+        contribution: parseSection(generatedText, 'contribution'),
+        goals: parseSection(generatedText, 'goals')
+      };
+
+      // 項目別のカードを描画
+      resultContainer.innerHTML = `
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">1. 総評</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-overall')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-overall">${escapeHtml(sections.overall)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">2. 勤怠健康管理について</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-health')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-health">${escapeHtml(sections.health)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">3. 新しくできるようになったこと</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-new_skills')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-new_skills">${escapeHtml(sections.new_skills)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">4. 自主的に意識して継続的に実施してきたこと</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-continuous_efforts')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-continuous_efforts">${escapeHtml(sections.continuous_efforts)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">5. 現場で評価頂いたこと</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-evaluations')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-evaluations">${escapeHtml(sections.evaluations)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">6. 現場への貢献や自己研鑽</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-contribution')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-contribution">${escapeHtml(sections.contribution)}</div>
+        </div>
+
+        <div class="result-item-card">
+          <div class="result-item-header">
+            <span class="result-item-title">7. 今後の課題・目標管理</span>
+            <button type="button" class="btn-action" onclick="copySectionText(this, 'box-goals')">結果をコピー</button>
+          </div>
+          <div class="output-box" id="box-goals">${escapeHtml(sections.goals)}</div>
+        </div>
+      `;
+
     } catch (err) {
-      outputArea.textContent = 'エラーが発生しました: ' + err.message;
+      resultContainer.innerHTML = `<div style="color: var(--splat-pink); padding: 10px;">エラーが発生しました: ${escapeHtml(err.message)}</div>`;
     } finally {
       generateBtn.disabled = false;
     }
   });
 
-  // AI生成結果のコピー処理（こちらも同様に2秒間のボタンラベル変更対応）
-  copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(outputArea.textContent).then(() => {
-      showTemporarySuccess(copyBtn, '✅ コピー完了！', '結果をコピー！');
-    });
-  });
+  // セクション抽出用ヘルパー
+  function parseSection(fullText, key) {
+    const regex = new RegExp(`---SECTION:${key}---([\\s\\S]*?)(?=---SECTION:|<|$)`, 'i');
+    const match = fullText.match(regex);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return '（該当する内容がありませんでした）';
+  }
 </script>
 </body>
 </html>
